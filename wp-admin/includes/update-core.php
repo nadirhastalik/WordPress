@@ -880,7 +880,7 @@ $_new_bundled_files = array(
  *
  * @param string $from New release unzipped path.
  * @param string $to   Path to old WordPress installation.
- * @return WP_Error|null WP_Error on failure, null on success.
+ * @return null|WP_Error WP_Error on failure, null on success.
  */
 function update_core( $from, $to ) {
 	global $wp_filesystem, $_old_files, $_new_bundled_files, $wpdb;
@@ -1004,7 +1004,7 @@ function update_core( $from, $to ) {
 	// Add a warning when the JSON PHP extension is missing.
 	if ( ! extension_loaded( 'json' ) ) {
 		return new WP_Error(
-			'php_not_compatible',
+			'php_not_compatible_json',
 			sprintf(
 				/* translators: 1: WordPress version number, 2: The PHP extension name needed. */
 				__( 'The update cannot be installed because WordPress %1$s requires the %2$s PHP extension.' ),
@@ -1311,10 +1311,10 @@ function update_core( $from, $to ) {
  *
  * @global WP_Filesystem_Base $wp_filesystem
  *
- * @param string $from     source directory
- * @param string $to       destination directory
- * @param array $skip_list a list of files/folders to skip copying
- * @return mixed WP_Error on failure, True on success.
+ * @param string   $from      Source directory.
+ * @param string   $to        Destination directory.
+ * @param string[] $skip_list Array of files/folders to skip copying.
+ * @return true|WP_Error WP_Error on failure, true on success.
  */
 function _copy_dir( $from, $to, $skip_list = array() ) {
 	global $wp_filesystem;

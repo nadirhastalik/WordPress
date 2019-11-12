@@ -538,7 +538,6 @@ class WP_Query {
 			'attachment',
 			'attachment_id',
 			'name',
-			'static',
 			'pagename',
 			'page_id',
 			'second',
@@ -805,7 +804,7 @@ class WP_Query {
 			// If year, month, day, hour, minute, and second are set, a single
 			// post is being queried.
 			$this->is_single = true;
-		} elseif ( '' != $qv['static'] || '' != $qv['pagename'] || ! empty( $qv['page_id'] ) ) {
+		} elseif ( '' != $qv['pagename'] || ! empty( $qv['page_id'] ) ) {
 			$this->is_page   = true;
 			$this->is_single = false;
 		} else {
@@ -1403,7 +1402,7 @@ class WP_Query {
 	 * @since 3.7.0
 	 *
 	 * @param string[] $terms Array of terms to check.
-	 * @return array Terms that are not stopwords.
+	 * @return string[] Terms that are not stopwords.
 	 */
 	protected function parse_search_terms( $terms ) {
 		$strtolower = function_exists( 'mb_strtolower' ) ? 'mb_strtolower' : 'strtolower';
@@ -1439,7 +1438,7 @@ class WP_Query {
 	 *
 	 * @since 3.7.0
 	 *
-	 * @return array Stopwords.
+	 * @return string[] Stopwords.
 	 */
 	protected function get_search_stopwords() {
 		if ( isset( $this->stopwords ) ) {
@@ -3586,7 +3585,7 @@ class WP_Query {
 	 *
 	 * @since 3.1.0
 	 *
-	 * @param mixed $post_types Optional. Post type or array of posts types to check against.
+	 * @param string|string[] $post_types Optional. Post type or array of posts types to check against.
 	 * @return bool
 	 */
 	public function is_post_type_archive( $post_types = '' ) {

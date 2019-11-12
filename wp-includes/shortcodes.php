@@ -488,9 +488,8 @@ function get_shortcode_atts_regex() {
  * retrieval of the attributes, since all attributes have to be known.
  *
  * @since 2.5.0
- * @since 5.3.0 Added support of a full shortcode input.
  *
- * @param string $text Any single shortcode of any format or key/value pair string.
+ * @param string $text
  * @return array|string List of attribute values.
  *                      Returns empty array if trim( $text ) == '""'.
  *                      Returns empty string if trim( $text ) == ''.
@@ -499,13 +498,7 @@ function get_shortcode_atts_regex() {
 function shortcode_parse_atts( $text ) {
 	$atts    = array();
 	$pattern = get_shortcode_atts_regex();
-	$text    = trim( preg_replace( "/[\x{00a0}\x{200b}]+/u", ' ', $text ) );
-
-	// Remove everything but attributes from shortcode.
-	if ( preg_match( '#^\[[\w-]+([^\]]*?)\/?\]#', $text, $matches ) ) {
-		$text = $matches[1];
-	}
-
+	$text    = preg_replace( "/[\x{00a0}\x{200b}]+/u", ' ', $text );
 	if ( preg_match_all( $pattern, $text, $match, PREG_SET_ORDER ) ) {
 		foreach ( $match as $m ) {
 			if ( ! empty( $m[1] ) ) {
@@ -565,21 +558,22 @@ function shortcode_atts( $pairs, $atts, $shortcode = '' ) {
 			$out[ $name ] = $default;
 		}
 	}
-	/**
-	 * Filters a shortcode's default attributes.
-	 *
-	 * If the third parameter of the shortcode_atts() function is present then this filter is available.
-	 * The third parameter, $shortcode, is the name of the shortcode.
-	 *
-	 * @since 3.6.0
-	 * @since 4.4.0 Added the `$shortcode` parameter.
-	 *
-	 * @param array  $out       The output array of shortcode attributes.
-	 * @param array  $pairs     The supported attributes and their defaults.
-	 * @param array  $atts      The user defined shortcode attributes.
-	 * @param string $shortcode The shortcode name.
-	 */
+
 	if ( $shortcode ) {
+		/**
+		 * Filters a shortcode's default attributes.
+		 *
+		 * If the third parameter of the shortcode_atts() function is present then this filter is available.
+		 * The third parameter, $shortcode, is the name of the shortcode.
+		 *
+		 * @since 3.6.0
+		 * @since 4.4.0 Added the `$shortcode` parameter.
+		 *
+		 * @param array  $out       The output array of shortcode attributes.
+		 * @param array  $pairs     The supported attributes and their defaults.
+		 * @param array  $atts      The user defined shortcode attributes.
+		 * @param string $shortcode The shortcode name.
+		 */
 		$out = apply_filters( "shortcode_atts_{$shortcode}", $out, $pairs, $atts, $shortcode );
 	}
 

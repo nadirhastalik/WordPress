@@ -317,7 +317,6 @@ final class WP_Customize_Manager {
 		require_once( ABSPATH . WPINC . '/customize/class-wp-customize-nav-menu-name-control.php' );
 		require_once( ABSPATH . WPINC . '/customize/class-wp-customize-nav-menu-locations-control.php' );
 		require_once( ABSPATH . WPINC . '/customize/class-wp-customize-nav-menu-auto-add-control.php' );
-		require_once( ABSPATH . WPINC . '/customize/class-wp-customize-new-menu-control.php' ); // @todo Remove in a future release. See #42364.
 
 		require_once( ABSPATH . WPINC . '/customize/class-wp-customize-nav-menus-panel.php' );
 
@@ -325,7 +324,6 @@ final class WP_Customize_Manager {
 		require_once( ABSPATH . WPINC . '/customize/class-wp-customize-themes-section.php' );
 		require_once( ABSPATH . WPINC . '/customize/class-wp-customize-sidebar-section.php' );
 		require_once( ABSPATH . WPINC . '/customize/class-wp-customize-nav-menu-section.php' );
-		require_once( ABSPATH . WPINC . '/customize/class-wp-customize-new-menu-section.php' ); // @todo Remove in a future release. See #42364.
 
 		require_once( ABSPATH . WPINC . '/customize/class-wp-customize-custom-css-setting.php' );
 		require_once( ABSPATH . WPINC . '/customize/class-wp-customize-filter-setting.php' );
@@ -438,8 +436,8 @@ final class WP_Customize_Manager {
 	 *
 	 * @since 3.4.0
 	 *
-	 * @param mixed $ajax_message Ajax return
-	 * @param mixed $message UI message
+	 * @param string|WP_Error $ajax_message Ajax return.
+	 * @param string          $message      Optional. UI message.
 	 */
 	protected function wp_die( $ajax_message, $message = null ) {
 		if ( $this->doing_ajax() ) {
@@ -1517,7 +1515,27 @@ final class WP_Customize_Manager {
 
 		// Options.
 		foreach ( $options as $name => $value ) {
-			if ( preg_match( '/^{{(?P<symbol>.+)}}$/', $value, $matches ) ) {
+
+			// Serialize the value to check for post symbols.
+			$value = maybe_serialize( $value );
+
+			if ( is_serialized( $value ) ) {
+				if ( preg_match( '/s:\d+:"{{(?P<symbol>.+)}}"/', $value, $matches ) ) {
+					if ( isset( $posts[ $matches['symbol'] ] ) ) {
+						$symbol_match = $posts[ $matches['symbol'] ]['ID'];
+					} elseif ( isset( $attachment_ids[ $matches['symbol'] ] ) ) {
+						$symbol_match = $attachment_ids[ $matches['symbol'] ];
+					}
+
+					// If we have any symbol matches, update the values.
+					if ( isset( $symbol_match ) ) {
+						// Replace found string matches with post IDs.
+						$value = str_replace( $matches[0], "i:{$symbol_match}", $value );
+					} else {
+						continue;
+					}
+				}
+			} elseif ( preg_match( '/^{{(?P<symbol>.+)}}$/', $value, $matches ) ) {
 				if ( isset( $posts[ $matches['symbol'] ] ) ) {
 					$value = $posts[ $matches['symbol'] ]['ID'];
 				} elseif ( isset( $attachment_ids[ $matches['symbol'] ] ) ) {
@@ -1526,6 +1544,9 @@ final class WP_Customize_Manager {
 					continue;
 				}
 			}
+
+			// Unserialize values after checking for post symbols, so they can be properly referenced.
+			$value = maybe_unserialize( $value );
 
 			if ( empty( $changeset_data[ $name ] ) || ! empty( $changeset_data[ $name ]['starter_content'] ) ) {
 				$this->set_post_value( $name, $value );
@@ -1535,7 +1556,28 @@ final class WP_Customize_Manager {
 
 		// Theme mods.
 		foreach ( $theme_mods as $name => $value ) {
-			if ( preg_match( '/^{{(?P<symbol>.+)}}$/', $value, $matches ) ) {
+
+			// Serialize the value to check for post symbols.
+			$value = maybe_serialize( $value );
+
+			// Check if value was serialized.
+			if ( is_serialized( $value ) ) {
+				if ( preg_match( '/s:\d+:"{{(?P<symbol>.+)}}"/', $value, $matches ) ) {
+					if ( isset( $posts[ $matches['symbol'] ] ) ) {
+						$symbol_match = $posts[ $matches['symbol'] ]['ID'];
+					} elseif ( isset( $attachment_ids[ $matches['symbol'] ] ) ) {
+						$symbol_match = $attachment_ids[ $matches['symbol'] ];
+					}
+
+					// If we have any symbol matches, update the values.
+					if ( isset( $symbol_match ) ) {
+						// Replace found string matches with post IDs.
+						$value = str_replace( $matches[0], "i:{$symbol_match}", $value );
+					} else {
+						continue;
+					}
+				}
+			} elseif ( preg_match( '/^{{(?P<symbol>.+)}}$/', $value, $matches ) ) {
 				if ( isset( $posts[ $matches['symbol'] ] ) ) {
 					$value = $posts[ $matches['symbol'] ]['ID'];
 				} elseif ( isset( $attachment_ids[ $matches['symbol'] ] ) ) {
@@ -1544,6 +1586,9 @@ final class WP_Customize_Manager {
 					continue;
 				}
 			}
+
+			// Unserialize values after checking for post symbols, so they can be properly referenced.
+			$value = maybe_unserialize( $value );
 
 			// Handle header image as special case since setting has a legacy format.
 			if ( 'header_image' === $name ) {
@@ -3629,6 +3674,8 @@ final class WP_Customize_Manager {
 	 * @since 3.4.0
 	 * @since 4.5.0 Return added WP_Customize_Setting instance.
 	 *
+	 * @link https://developer.wordpress.org/themes/customize-api
+	 *
 	 * @param WP_Customize_Setting|string $id   Customize Setting object, or ID.
 	 * @param array                       $args {
 	 *  Optional. Array of properties for the new WP_Customize_Setting. Default empty array.
@@ -3640,8 +3687,7 @@ final class WP_Customize_Manager {
 	 *  @type string       $transport             Options for rendering the live preview of changes in Customizer.
 	 *                                            Using 'refresh' makes the change visible by reloading the whole preview.
 	 *                                            Using 'postMessage' allows a custom JavaScript to handle live changes.
-	 * @link https://developer.wordpress.org/themes/customize-api
-	 *                                            Default is 'refresh'
+	 *                                            Default is 'refresh'.
 	 *  @type callable     $validate_callback     Server-side validation callback for the setting's value.
 	 *  @type callable     $sanitize_callback     Callback to filter a Customize setting value in un-slashed form.
 	 *  @type callable     $sanitize_js_callback  Callback to convert a Customize PHP setting value to a value that is
